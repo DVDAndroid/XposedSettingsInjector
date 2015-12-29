@@ -3,7 +3,6 @@ package com.arilotter.xposedsettingsinjector;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 
 import java.util.ArrayList;
@@ -51,17 +50,26 @@ public class XposedMod implements IXposedHookLoadPackage {
                 ArrayList<ApplicationInfo> xposedModulesList = new ArrayList<>();
                 List<String> activeModules = ModuleLoader.getActiveModules();
 
-                for (PackageInfo pkg : context.getPackageManager().getInstalledPackages(PackageManager.GET_META_DATA)) {
-                    ApplicationInfo app = pkg.applicationInfo;
-                    boolean isXposedInstaller = app.packageName.equals("de.robv.android.xposed.installer");
-                    if ((!app.enabled || !activeModules.contains(app.sourceDir)) && !isXposedInstaller)
-                        continue;
+                for (String s : activeModules) {
+                    // example
+                    // s = "/data/app/com.arilotter.xposedsettingsinjector-2/base.apk"
 
-                    // Always put the Xposed installer in the list.
-                    if ((app.metaData != null && app.metaData.containsKey("xposedmodule")) || isXposedInstaller) {
+                    s = s.replace("/data/app/", ""); // == /data/app/com.arilotter.xposedsettingsinjector-2/base.apk
+                    s = s.replace("/base.apk", ""); // == com.arilotter.xposedsettingsinjector-2
+                    s = s.substring(0, s.length() - 2); // == com.arilotter.xposedsettingsinjector
+
+                    ApplicationInfo app = context.getPackageManager().getApplicationInfo(s, PackageManager.GET_META_DATA);
+
+                    if (app.metaData != null && app.metaData.containsKey("xposedmodule"))
                         xposedModulesList.add(app);
-                    }
                 }
+
+                ApplicationInfo xposedInstaller;
+                try {
+                    xposedInstaller = context.getPackageManager().getApplicationInfo("de.robv.android.xposed.installer", 0);
+
+                    xposedModulesList.add(xposedInstaller);
+                } catch (PackageManager.NameNotFoundException ignored) {}
 
                 Collections.sort(xposedModulesList, new ApplicationInfo.DisplayNameComparator(pm));
 
